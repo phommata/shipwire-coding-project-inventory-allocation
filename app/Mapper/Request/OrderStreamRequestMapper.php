@@ -27,12 +27,11 @@ class OrderStreamRequestMapper
                 $orderStream[] = new Order($order['Header'], $line);
             }
         } catch (\Exception $exception) {
-            Log::error("\$orderStream: " . print_r($orderStream, true));
+            Log::error("eror mapping \$orderStream: " . print_r($orderStream, true));
         }
 
+        Log::debug("\$orderStream: " . print_r($orderStream, true));
 
-
-Log::debug("\$orderStream: " . print_r($orderStream, true));
         return $orderStream;
     }
 }

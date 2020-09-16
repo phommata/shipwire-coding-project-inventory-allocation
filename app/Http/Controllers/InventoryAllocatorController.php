@@ -31,7 +31,11 @@ class InventoryAllocatorController extends Controller
             return response()->json(["error" => "There was an error mapping order stream. Please check the request."], Response::HTTP_BAD_REQUEST);
         }
 
-        $this->handleUpdate($inventoryAllocatorResponseBuilder, $orderStream);
+        try {
+            $this->handleUpdate($inventoryAllocatorResponseBuilder, $orderStream);
+        } catch (\Exception $exception) {
+            return response()->json(['error' => $exception->getMessage()]);
+        }
 
         // Respond with stream of original order, allocated, back ordered
         return response()->json($inventoryAllocatorResponseBuilder->response);
@@ -41,7 +45,7 @@ class InventoryAllocatorController extends Controller
      * @param InventoryAllocatorResponseBuilder $inventoryAllocatorResponseBuilder
      * @param array $orderStream
      */
-    private function handleUpdate(InventoryAllocatorResponseBuilder $inventoryAllocatorResponseBuilder, array $orderStream): void
+    private function handleUpdate(InventoryAllocatorResponseBuilder $inventoryAllocatorResponseBuilder, array $orderStream)
     {
         // Loop through stream of orders
         foreach ($orderStream as $order) {
@@ -53,6 +57,13 @@ class InventoryAllocatorController extends Controller
 
             // get current inventories
             $inventories = Inventory::all();
+
+            Log::debug("\$inventories: " . print_r($inventories, true));
+
+            if (count($inventories) == 0) {
+                throw new \Exception('There is no inventory to allocate');
+            }
+
             $this->processInventoryOrders($inventories, $order, $inventoryOrder, $allocateOrder, $backOrder);
 
             $inventoryAllocatorResponseBuilder->buildResponse([
