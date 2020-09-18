@@ -67,6 +67,8 @@ class InventoryAllocatorController extends Controller
 
             $this->processInventoryOrder($inventories, $order, $inventoryOrder, $allocateOrder, $backOrder);
 
+            // TODO transactional record of request and response
+
             $inventoryAllocatorResponseBuilder->buildResponse([
                 'Header' => $order->header,
                 'Order' => $inventoryOrder,
