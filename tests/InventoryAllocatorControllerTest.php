@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
 use TestCase;
 use Laravel\Lumen\Testing\DatabaseMigrations;
 
@@ -121,7 +122,37 @@ class InventoryAllocatorControllerTest extends TestCase
                 ['Accept' => 'application/json']
             )
             ->seeStatusCode(200)
-            ->seeJson([
+            ->seeInDatabase('inventories', [
+                'name' => 'A',
+                'quantity' => 0,
+            ])
+            ->seeInDatabase('inventories', [
+                'name' => 'B',
+                'quantity' => 0,
+            ])
+            ->seeInDatabase('inventories', [
+                'name' => 'C',
+                'quantity' => 0,
+            ])
+            ->seeInDatabase('inventories', [
+                'name' => 'D',
+                'quantity' => 0,
+            ])
+            ->seeInDatabase('inventories', [
+                'name' => 'B',
+                'quantity' => 0,
+            ])
+            ->notSeeInDatabase('inventories', [
+                'name' => 'F',
+                'quantity' => 0,
+            ]);
+
+        $data = $this->response->getData(true);
+
+        Log::debug("update_can_allocate_an_existing_inventory " . print_r($data, true));
+
+        $this->assertEquals(
+            [
                 [
                     'Header' => 1,
                     'Order' => [
@@ -212,7 +243,7 @@ class InventoryAllocatorControllerTest extends TestCase
                         ],
                         [
                             'Product' => 'E',
-                            'Quantity' => 0
+                            'Quantity' => 5
                         ],
                     ],
                     'Allocate' => [
@@ -399,19 +430,19 @@ class InventoryAllocatorControllerTest extends TestCase
                     ]
                 ],
                 [
-                    'Header' => 1,
+                    'Header' => 5,
                     'Order' => [
                         [
                             'Product' => 'A',
-                            'Quantity' => 1
-                        ],
-                        [
-                            'Product' => 'B',
                             'Quantity' => 0
                         ],
                         [
+                            'Product' => 'B',
+                            'Quantity' => 3
+                        ],
+                        [
                             'Product' => 'C',
-                            'Quantity' => 1
+                            'Quantity' => 0
                         ],
                         [
                             'Product' => 'D',
@@ -425,15 +456,15 @@ class InventoryAllocatorControllerTest extends TestCase
                     'Allocate' => [
                         [
                             'Product' => 'A',
-                            'Quantity' => 1
-                        ],
-                        [
-                            'Product' => 'B',
                             'Quantity' => 0
                         ],
                         [
+                            'Product' => 'B',
+                            'Quantity' => 3
+                        ],
+                        [
                             'Product' => 'C',
-                            'Quantity' => 1
+                            'Quantity' => 0
                         ],
                         [
                             'Product' => 'D',
@@ -455,7 +486,7 @@ class InventoryAllocatorControllerTest extends TestCase
                         ],
                         [
                             'Product' => 'C',
-                            'Quantity' => 1
+                            'Quantity' => 0
                         ],
                         [
                             'Product' => 'D',
@@ -506,7 +537,7 @@ class InventoryAllocatorControllerTest extends TestCase
                         ],
                         [
                             'Product' => 'D',
-                            'Quantity' => 4
+                            'Quantity' => 0
                         ],
                         [
                             'Product' => 'E',
@@ -536,33 +567,10 @@ class InventoryAllocatorControllerTest extends TestCase
                         ],
                     ]
                 ],
-            ])
-            ->seeInDatabase('inventories', [
-                'name' => 'A',
-                'quantity' => 0,
-            ])
-            ->seeInDatabase('inventories', [
-                'name' => 'B',
-                'quantity' => 0,
-            ])
-            ->seeInDatabase('inventories', [
-                'name' => 'C',
-                'quantity' => 0,
-            ])
-            ->seeInDatabase('inventories', [
-                'name' => 'D',
-                'quantity' => 0,
-            ])
-            ->seeInDatabase('inventories', [
-                'name' => 'B',
-                'quantity' => 0,
-            ])
-            ->notSeeInDatabase('inventories', [
-                'name' => 'F',
-                'quantity' => 0,
-            ]);
-
-        $this->assertArrayHasKey('data', $this->response->getData(true));
+            ],
+            $data
+        );
+        $this->assertCount(6, $data);
     }
 
     /** @test */
@@ -622,14 +630,14 @@ class InventoryAllocatorControllerTest extends TestCase
     {
         foreach ($this->getValidationTestData() as $test) {
             $method = $test['method'];
-            $test['data']['quantity'] = 'unknown';
+            $test['data']['Header'] = 'unknown';
             $this->$method($test['url'], $test['data'], ['Accept' => 'application/json']);
 
             $this->seeStatusCode(422);
 
             $data = $this->response->getData(true);
-            $this->assertCount(8, $data);
-            $this->assertArrayHasKey('quantity', $data);
+            $this->assertCount(5, $data);
+            $this->assertArrayHasKey('Header', $data);
         }
     }
 }

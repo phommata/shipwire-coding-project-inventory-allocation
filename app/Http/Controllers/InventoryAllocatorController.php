@@ -64,7 +64,7 @@ class InventoryAllocatorController extends Controller
                 throw new \Exception('There is no inventory to allocate');
             }
 
-            $this->processInventoryOrders($inventories, $order, $inventoryOrder, $allocateOrder, $backOrder);
+            $this->processInventoryOrder($inventories, $order, $inventoryOrder, $allocateOrder, $backOrder);
 
             $inventoryAllocatorResponseBuilder->buildResponse([
                 'Header' => $order->header,
@@ -83,35 +83,46 @@ class InventoryAllocatorController extends Controller
      * @param array $backOrder
      * @return array
      */
-    private function processInventoryOrders($inventories, $order, array &$inventoryOrder, array &$allocateOrder, array &$backOrder)
+    private function processInventoryOrder($inventories, $order, array &$inventoryOrder, array &$allocateOrder, array &$backOrder)
     {
         // loop through inventories
         foreach ($inventories as $inventory) {
             $inventoryRequested = false;
+
             Log::debug("\$inventory->name: $inventory->name requested init state $inventoryRequested");
 
             // loop through lines
-            foreach ($order->lines as $lineItem) {
-                Log::debug("\$lineItem: " . print_r($lineItem, true));
+            for ($i = 0; $i < count($order->lines); $i++) {
+                Log::debug("\$order->lines[$i]: " . print_r($order->lines[$i], true));
 
-                // check invalid inventory allocation order, qty > 5 or not at least 1 qty ordered
-                if ($lineItem->name == $inventory['name'] && $lineItem->quantity > self::ORDER_QTY_ZERO && $lineItem->quantity <= self::ORDER_QTY_MAX) {
+                if (!$order->isValid && $order->lines[$i]->name == $inventory['name']) {
+                    // inventory ordered
+                    $inventoryRequested = true;
+
+                    $this->buildInvalidOrderAllocateBackorder($order, $inventoryOrder, $allocateOrder, $backOrder, $inventory, $i);
+
+                } else if ($order->isValid && $order->lines[$i]->name == $inventory['name'] &&
+                    $order->lines[$i]->quantity > self::ORDER_QTY_ZERO && $order->lines[$i]->quantity <= self::ORDER_QTY_MAX) {
+                    // check invalid inventory allocation order, qty > 5 or not at least 1 qty ordered
+
+                    $inventoryRequested = true;
+
                     Log::debug("valid line item: ");
 
                     // inventory ordered
                     $inventoryOrder[] = [
                         'Product' => $inventory->name,
-                        'Quantity' => $lineItem->quantity,
+                        'Quantity' => $order->lines[$i]->quantity,
                     ];
 
-                    $invItem = Inventory::where('name', $lineItem->name)->first();
+                    $invItem = Inventory::where('name', $order->lines[$i]->name)->first();
 
                     // Update inventory for each order until 0; back order any inventory
-                    if ($lineItem->quantity <= $inventory->quantity) {
-                        $this->allocateSufficientInventory($allocateOrder, $backOrder, $inventory, $lineItem, $invItem, $inventoryRequested);
+                    if ($order->lines[$i]->quantity <= $inventory->quantity) {
+                        $this->allocateSufficientInventory($allocateOrder, $backOrder, $inventory, $order->lines[$i], $invItem, $inventoryRequested);
 
-                    } elseif ($lineItem->quantity > $inventory->quantity) {
-                        $this->allocateInsufficientInventory($allocateOrder, $backOrder, $inventory, $lineItem, $invItem, $inventoryRequested);
+                    } elseif ($order->lines[$i]->quantity > $inventory->quantity) {
+                        $this->allocateInsufficientInventory($allocateOrder, $backOrder, $inventory, $order->lines[$i], $invItem, $inventoryRequested);
                     }
 
                     $invItem->save();
@@ -222,5 +233,33 @@ class InventoryAllocatorController extends Controller
                 'Quantity' => self::ORDER_QTY_ZERO,
             ];
         }
+    }
+
+    /**
+     * @param $order
+     * @param array $inventoryOrder
+     * @param array $allocateOrder
+     * @param array $backOrder
+     * @param $inventory
+     * @param int $i
+     */
+    private function buildInvalidOrderAllocateBackorder($order, array &$inventoryOrder, array &$allocateOrder, array &$backOrder, $inventory, int $i): void
+    {
+        $inventoryOrder[] = [
+            'Product' => $inventory->name,
+            'Quantity' => $order->lines[$i]->quantity,
+        ];
+
+        // allocate
+        $allocateOrder[] = [
+            'Product' => $inventory->name,
+            'Quantity' => self::ORDER_QTY_ZERO,
+        ];
+
+        // back order
+        $backOrder[] = [
+            'Product' => $inventory->name,
+            'Quantity' => self::ORDER_QTY_ZERO,
+        ];
     }
 }

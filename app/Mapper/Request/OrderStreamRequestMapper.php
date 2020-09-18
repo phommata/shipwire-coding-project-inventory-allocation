@@ -16,15 +16,24 @@ class OrderStreamRequestMapper
 
         try {
             foreach ($data as $order) {
-                $line = [];
+                $lines = [];
+                $isValidOrder = true;
+
                 foreach ($order['Lines'] as $lineItem) {
                     Log::debug("\$lineItem: " . print_r($lineItem, true));
 
                     $lineItem = new LineItem($lineItem['Product'], $lineItem['Quantity']);
-                    $line[] = $lineItem;
+                    $lines[] = $lineItem;
+
+                    // check if valid order
+                    if ($lineItem->quantity > 5) {
+                        $isValidOrder = false;
+                        Log::debug("invalid quanity \$isValidOrder" . print_r($isValidOrder, true));
+                    }
                 }
 
-                $orderStream[] = new Order($order['Header'], $line);
+
+                $orderStream[] = new Order($order['Header'], $lines, $isValidOrder);
             }
         } catch (\Exception $exception) {
             Log::error("eror mapping \$orderStream: " . print_r($orderStream, true));
