@@ -44,6 +44,7 @@ class InventoryAllocatorController extends Controller
     /**
      * @param InventoryAllocatorResponseBuilder $inventoryAllocatorResponseBuilder
      * @param array $orderStream
+     * @throws \Exception
      */
     private function handleUpdate(InventoryAllocatorResponseBuilder $inventoryAllocatorResponseBuilder, array $orderStream)
     {
